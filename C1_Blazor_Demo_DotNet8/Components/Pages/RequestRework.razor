@@ -1,0 +1,227 @@
+﻿@page "/requestrework"
+@using C1.Blazor.Input
+@rendermode InteractiveServer
+@using NetcodeHub.Packages.Components.Modal
+@using C1_Blazor_Demo_DotNet8.Models.ViewModels
+@using System.Text.Json;
+@using Newtonsoft.Json;
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h3 style="text-align:center;">Request Rework</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th class="small-col">Route</th>
+            <th class="large-col">Pending Request</th>
+            <th class="small-col">View</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in pendingFuncNMList)
+        {
+            <tr>
+                <td class="small-col icon-header"></td>
+                <td class="large-col">@item.FUNCTION_NM</td>
+                <td class="small-col viewcon-header">
+                    <button class="btn btn-info btn-sm" @onclick="() => OpenModal(item.FUNCTION_ID)">View</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<NetcodeHubModal BootstrapClass="border-success"
+                 CustomStyle="width:500px;aligned-item:centered"
+                 @bind-Open="IsOpen">
+    <ButtonTemplate>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th class="small-col">Branch ID</th>
+                        <th class="large-col">Primary Column</th>
+                        <th class="small-col">Primary Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in pendingReqQueueList)
+                    {
+                        <tr>
+                            <td class="small-col">@item.BranchId</td>
+                            <td class="large-col">@item.PK_COLUMN_NAME</td>
+                            <td class="small-col">@item.PK_COLUMN_VALUE</td>
+                            <td class="small-col">
+                                <button class="btn btn-info btn-sm" @onclick="() => OpenModalReqQueue(item.LOG_ID)">View</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <br/>
+        <div class="d-flex justify-content-center align-content-center">
+            <button class="btn btn-success btn-sm" @onclick="OnOkayClick" style="margin-right:5px">Okay</button>
+            <button class="btn btn-danger btn-sm" @onclick="OnCancelClick">Cancel</button>
+        </div>
+    </ButtonTemplate>
+</NetcodeHubModal>
+
+<NetcodeHubModal BootstrapClass="border-success custom-modal"
+                 CustomStyle="width:600px; margin:auto; padding:20px;"
+                 @bind-Open="IsChildModalOpen">
+    <ButtonTemplate>
+        <div>
+            @if (FetchReworkData != null && FetchReworkData.Count > 0)
+            {
+                @foreach (var tableGroup in FetchReworkData.GroupBy(x => x["TABLE_DISPLAY_NAME"].ToString()))
+                {
+                            <div class="table-container">
+                                <h5>@tableGroup.Key</h5>
+                                <table class="table custom-table">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>DISPLAY_NAME</th>
+                                            <th>OLD_VALUE</th>
+                                            <th>NEW_VALUE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                @foreach (var row in tableGroup)
+                                {
+                                                <tr class="@(row.ContainsKey("REWORK_FLAG") && row["REWORK_FLAG"].ToString() == "1" ? "highlight-row" : "")">
+                                                    <td>@row["DISPLAY_NAME"]</td>
+                                                    <td>@row["OLD_VALUE"]</td>
+                                                    <td>@row["NEW_VALUE"]</td>
+                                                </tr>
+                                }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <br />
+                }
+            }
+            else
+            {
+                    <p>No data available.</p>
+            }
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" @onclick="NavigateToPage">Go to Page</button>
+        </div>
+    </ButtonTemplate>
+</NetcodeHubModal>
+
+
+
+
+
+@code {
+    public List<UserAccountModel> pendingFuncNMList { get; set; } = new List<UserAccountModel>();
+    public List<UserAccountModel> pendingReqQueueList { get; set; } = new List<UserAccountModel>();
+    public List<Dictionary<string, object>> FetchReworkData { get; set; } = new List<Dictionary<string, object>>();
+
+    public bool IsOpen { get; set; }
+    public bool IsChildModalOpen { get; set; }
+
+    private string? errorMessage;
+    private string? selectedFunctionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/Dashboard/GetPendingFuncNM");
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                pendingFuncNMList = JsonConvert.DeserializeObject<List<UserAccountModel>>(jsonResponse);
+            }
+            else
+            {
+                errorMessage = $"Error: {response.ReasonPhrase}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+
+    private async Task OpenModal(string functionId)
+    {
+        selectedFunctionId = functionId;
+        try
+        {
+            var url = $"api/Dashboard/GetRequestQueue?functionId={Uri.EscapeDataString(functionId)}";
+
+            using (var response = await Http.GetAsync(url))
+            {
+                response.EnsureSuccessStatusCode(); 
+
+                var responseData = await response.Content.ReadAsStringAsync();
+                pendingReqQueueList = JsonConvert.DeserializeObject<List<UserAccountModel>>(responseData);
+
+
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            errorMessage = $"HTTP Request error: {httpEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            IsOpen = true;
+        }
+    }
+    private async Task OpenModalReqQueue(int logId)
+    {
+        IsOpen = false;
+        try
+        {
+            var url = $"api/Dashboard/GetReworkdata?log_id={Uri.EscapeDataString(logId.ToString())}";
+
+            using (var response = await Http.GetAsync(url))
+            {
+                response.EnsureSuccessStatusCode();
+
+                var responseData = await response.Content.ReadAsStringAsync();
+                FetchReworkData = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(responseData);
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            errorMessage = $"HTTP Request error: {httpEx.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            IsChildModalOpen = true;
+        }
+    }
+
+
+
+    private void OnOkayClick()
+    {
+
+        IsOpen = false;
+        IsChildModalOpen = false;
+    }
+
+    private void OnCancelClick()
+    {
+        IsOpen = false;
+        IsChildModalOpen = false;
+    }
+    private void NavigateToPage()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

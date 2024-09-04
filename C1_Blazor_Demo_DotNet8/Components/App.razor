@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="C1_Blazor_Demo_DotNet8.styles.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <!-- Add Bootstrap Icons CDN in the head section of your HTML file -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
+
+    @* Add References for C1 Blazor Css Files *@
+    <link rel="stylesheet" href="/_content/C1.Blazor.Core/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.Grid/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.ListView/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.Input/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.Menu/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.DataFilter/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.Calendar/styles.css" />
+    <link rel="stylesheet" href="/_content/C1.Blazor.DateTimeEditors/styles.css" />
+    @* Add References for C1 Blazor Css Files End Here*@
+
+
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+
+    @* Add References for C1 Blazor Script Files *@
+    <script src="/_content/C1.Blazor.Core/scripts.js"></script>
+    <script src="/_content/C1.Blazor.Input/scripts.js"></script>
+    <script src="/_content/C1.Blazor.Grid/scripts.js"></script>
+    <script src="/_content/C1.Blazor.Menu/scripts.js"></script>
+    <script src="/_content/C1.Blazor.Calendar/scripts.js"></script>
+    @* Add References for C1 Blazor Script Files End Here*@
+    <script src="_content/NetcodeHub.Packages.Components.Modal/modal.js"></script>
+
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

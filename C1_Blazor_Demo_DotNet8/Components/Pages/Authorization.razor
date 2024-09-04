@@ -1,0 +1,372 @@
+﻿@page "/auth"
+@using System.Net.Http
+@inject HttpClient _http
+@rendermode InteractiveServer
+@using C1_Blazor_Demo_DotNet8.Models.ViewModels
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using System.Text.Json;
+
+<h3 class="auth-title">NFT Authorization</h3>
+
+<!-- Dropdown -->
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <select class="form-select" @onchange="ShowModal">
+                <option value="">Select an item</option>
+                @foreach (var item in Items)
+                {
+                    <option value="@item.FUNCTION_ID">@item.FUNCTION_ID - @item.FUNCTION_NM</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+<!--Que Modal -->
+<div class="modal" style="display:@(IsModalVisible ? "block" : "none");">
+    <div class="modal-content">
+        <span class="close" @onclick="CloseModal">&times;</span>
+        <h2>Selected Function ID: @SelectedItem</h2>
+
+        <!-- Table displaying auth_log_list -->
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>LOG ID</th>
+                    <th>BRANCH ID</th>
+                    <th>MAKE BY</th>
+                    <th>MAKE DATE</th>
+                    <th>VIEW</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (auth_log_list != null && auth_log_list.Count > 0)
+                {
+                    foreach (var log in auth_log_list)
+                    {
+                        <tr>
+                            <td>@log.LOG_ID</td>
+                            <td>@log.BRANCHID</td>
+                            <td>@log.MAKE_BY</td>
+                            <td>@log.MAKE_DATE</td>
+                            <button class="btn view-btn" @onclick="() => ViewLogDetails(log.LOG_ID)">View</button>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5">No data available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+       
+    </div>
+</div>
+
+<!--Extended Modal -->
+<div class="modal2" style="display:@(IsModalVisible2 ? "block" : "none");">
+    <div class="modal-content2">
+        <span class="close" @onclick="CloseModal2">&times;</span>
+        
+
+        <!-- Table displaying auth_log_list -->
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>COLUMN NAME</th>
+                    <th>DISPLAY NAME</th>
+                    <th>OLD VALUE</th>
+                    <th>NEW VALUE</th>
+                    <th>TABLE NAME</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (auth_log_list_extended != null && auth_log_list_extended.Count > 0)
+                {
+                    foreach (var log in auth_log_list_extended)
+                    {
+                        <tr>
+                            <td>@log.COLUMN_NAME</td>
+                            <td>@log.DISPLAY_NAME</td>
+                            <td>@log.OLD_VALUE</td>
+                            <td>@log.NEW_VALUE</td>
+                            <td>@log.TABLE_NAME</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5">No data available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Remarks Section -->
+        <div class="remarks-section">
+            <textarea placeholder="Enter remarks"></textarea>
+        </div>
+
+        <!-- Buttons -->
+        <div class="button-group">
+            <button class="btn authorize">Authorize</button>
+            <button class="btn decline">Decline</button>
+            <button class="btn sentback">Send Back</button>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private List<ABS_SYS_APP_FUNCTION_Models> Items = new List<ABS_SYS_APP_FUNCTION_Models>();
+    private string SelectedItem { get; set; }
+    private bool IsModalVisible { get; set; } = false;
+    private bool IsModalVisible2 { get; set; } = false;
+
+    List<AUTH_LOG_MODEL> auth_log_list = new List<AUTH_LOG_MODEL>();
+    List<AUTH_LOG_MODEL> auth_log_list_extended = new List<AUTH_LOG_MODEL>();
+
+    private AUTH_LOG_MODEL selectedLogDetails;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+       await get_list_by_funcID();
+    }
+
+    public async Task get_list_by_funcID()
+    {
+        var response = await _http.GetFromJsonAsync<List<ABS_SYS_APP_FUNCTION_Models>>("api/Dashboard/get_list_by_funcID");
+        if (response != null)
+        {
+            Console.WriteLine(response);
+        }
+        Items = response;
+    }
+
+    private async Task ShowModal(ChangeEventArgs e)
+    {
+        SelectedItem = e.Value.ToString();
+        if (!string.IsNullOrEmpty(SelectedItem))
+        {
+            await get_auth_log_list(SelectedItem);
+            IsModalVisible = true;
+        }
+    }
+
+    private async Task ShowModal2(string log_id)
+    {
+        SelectedItem = log_id;
+        if (!string.IsNullOrEmpty(SelectedItem))
+        {
+            await get_log_details_extended(SelectedItem);
+            IsModalVisible2 = true;
+        }
+    }
+    public async Task CloseModal()
+    {
+        IsModalVisible = false;
+        Items = [];
+        await get_list_by_funcID();
+    }
+
+    public async Task CloseModal2()
+    {
+        IsModalVisible2 = false;
+        Items = [];
+        CloseModal();
+        await get_list_by_funcID();
+    }
+
+    public async Task get_auth_log_list(string? SelectedItem)
+    {
+
+        var response = await _http.PostAsJsonAsync("api/Dashboard/get_auth_log_list", SelectedItem);
+
+        if (response.IsSuccessStatusCode)
+        {
+            auth_log_list = await response.Content.ReadFromJsonAsync<List<AUTH_LOG_MODEL>>();
+
+            if (auth_log_list != null)
+            {
+                Console.WriteLine(auth_log_list);
+            }
+        }
+        else
+        {
+            Console.WriteLine("Error fetching auth log list");
+        }
+    }
+    
+
+      public async Task get_log_details_extended(string? SelectedItem)
+    {
+
+        var response = await _http.PostAsJsonAsync("api/Dashboard/get_log_details_extended", SelectedItem);
+
+        if (response.IsSuccessStatusCode)
+        {
+            auth_log_list_extended = await response.Content.ReadFromJsonAsync<List<AUTH_LOG_MODEL>>();
+
+            if (auth_log_list_extended != null)
+            {
+                Console.WriteLine(auth_log_list);
+            }
+        }
+        else
+        {
+            Console.WriteLine("Error fetching auth log list");
+        }
+    }
+    private async Task ViewLogDetails(string log)
+    {
+
+        await ShowModal2(log);
+
+        // You can now use `selectedLogDetails` to do anything, such as displaying more details
+        // in another modal, logging, etc.
+        Console.WriteLine(log);
+
+        // Example: Open another modal with the detailed information
+        // OpenDetailsModal();
+    }
+}
+
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+  .modal2 {
+        position: fixed;
+        z-index: 1;
+        left: 50%;
+        top: 50%;
+        width: 90%; /* Increased width for modal2 */
+        max-width: 1200px; /* Set a maximum width */
+        height: auto; /* Allow the height to adjust based on content */
+        transform: translate(-50%, -50%); /* Center the modal */
+        background-color: rgba(0, 0, 0, 0.4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+  }
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 50%;
+    border-radius: 10px;
+}
+.modal-content2{
+        background-color: #fefefe;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 100%;
+        border-radius: 10px;
+        box-sizing: border-box;
+}
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Table Styles */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 25px 0;
+    font-size: 18px;
+    text-align: left;
+}
+
+.styled-table th,
+.styled-table td {
+    padding: 12px 15px;
+}
+
+.styled-table thead tr {
+    background-color: #009879;
+    color: #ffffff;
+    text-align: left;
+}
+
+.styled-table tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+/* Button Styles */
+.button-group {
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.btn.authorize {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn.decline {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn.sentback {
+    background-color: #ffc107;
+    color: white;
+}
+
+/* Remarks Section */
+.remarks-section {
+    margin-top: 20px;
+}
+
+.remarks-section textarea {
+    width: 100%;
+    height: 100px;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+    .auth-title {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+</style>
