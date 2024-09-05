@@ -97,6 +97,21 @@ namespace C1_Blazor_Demo_DotNet8.Controller
 
             }
         }
+        [HttpPost]
+        [Route("update_rework_flag")]
+        public IActionResult update_rework_flag(string log_id, string column_name, string rework_flag)
+        {
+            var result = _DashboardRepository.update_rework_flag(log_id, column_name, rework_flag);
+            if (result != null)
+            {
+                return Ok(new { message = "Customer added successfully." });
+            }
+            else
+            {
+                return BadRequest("Failed to add customer.");
+            }
+
+        }
 
 
         //monim code

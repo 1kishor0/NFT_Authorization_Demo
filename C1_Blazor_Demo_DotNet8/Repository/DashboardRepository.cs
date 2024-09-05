@@ -5,6 +5,7 @@ using Dapper;
 using Oracle.ManagedDataAccess.Client;
 using System.Data;
 using System.Globalization;
+using System.Transactions;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace C1_Blazor_Demo_DotNet8.Repository
@@ -204,7 +205,49 @@ namespace C1_Blazor_Demo_DotNet8.Repository
             }
         }
 
+        public async Task<string> update_rework_flag(string log_id, string column_name, string rework_flag)
+        {
+            try
+            {
+                var Param = new OracleConfig();
 
+                Param.Add("p_log_ID", OracleDbType.NVarchar2, ParameterDirection.Input, log_id);
+                Param.Add("p_column_name", OracleDbType.NVarchar2, ParameterDirection.Input, column_name);
+                Param.Add("p_rework_flag", OracleDbType.NVarchar2, ParameterDirection.Input, rework_flag);
+
+                var conn = this.GetConnection();
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        var query = "ABS_auth_skb.update_rework_flag";
+
+                        await conn.ExecuteAsync(query, param: Param, commandType: CommandType.StoredProcedure, transaction: transaction);
+
+                        transaction.Commit();
+
+
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return "Okay";
+        }
 
 
         //Part of Monim
