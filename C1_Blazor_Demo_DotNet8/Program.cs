@@ -14,6 +14,8 @@ namespace C1_Blazor_Demo_DotNet8
             builder.Services.AddHttpClient();
             builder.Services.AddControllers();
             builder.Services.AddScoped<DashboardRepository>();
+            builder.Services.AddScoped<NFT_AuthRepository>();
+
 
             builder.Services.AddScoped(sp => new HttpClient
             {

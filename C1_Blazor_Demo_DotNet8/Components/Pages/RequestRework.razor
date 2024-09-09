@@ -13,7 +13,7 @@
 <table class="table table-striped">
     <thead>
         <tr>
-            <th class="small-col">Route</th>
+            @* <th class="small-col">Route</th> *@
             <th class="large-col">Pending Request</th>
             <th class="small-col">View</th>
         </tr>
@@ -22,7 +22,7 @@
         @foreach (var item in pendingFuncNMList)
         {
             <tr>
-                <td class="small-col icon-header"></td>
+                @* <td class="small-col icon-header"></td> *@
                 <td class="large-col">@item.FUNCTION_NM</td>
                 <td class="small-col viewcon-header">
                     <button class="btn btn-info btn-sm" @onclick="() => OpenModal(item.FUNCTION_ID)">View</button>
@@ -122,7 +122,7 @@
 
     public bool IsOpen { get; set; }
     public bool IsChildModalOpen { get; set; }
-
+    public string? passingLogId;
     private string? errorMessage;
     private string? selectedFunctionId;
 
@@ -190,6 +190,7 @@
 
                 var responseData = await response.Content.ReadAsStringAsync();
                 FetchReworkData = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(responseData);
+                 passingLogId = FetchReworkData[1]["LOG_ID"].ToString();
             }
         }
         catch (HttpRequestException httpEx)
@@ -222,6 +223,6 @@
     }
     private void NavigateToPage()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo($"/?logId={passingLogId}");
     }
 }

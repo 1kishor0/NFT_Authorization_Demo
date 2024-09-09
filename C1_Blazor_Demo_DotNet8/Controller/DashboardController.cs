@@ -97,6 +97,30 @@ namespace C1_Blazor_Demo_DotNet8.Controller
 
             }
         }
+        [HttpGet]
+        [Route("fetchCustomerData")]
+        
+             public IActionResult fetchCustomerData([FromQuery]string log_id)
+             {
+            try
+            {
+                var result = _DashboardRepository.fetchCustomerData(log_id);
+
+                if (result != null)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return BadRequest("Failed to add customer.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+
+            }
+        }
         [HttpPost]
         [Route("update_rework_flag")]
         public IActionResult update_rework_flag(string log_id, string column_name, string rework_flag)
@@ -112,7 +136,25 @@ namespace C1_Blazor_Demo_DotNet8.Controller
             }
 
         }
+        [HttpPost]
+        [Route("AccountOpening")]
+        public IActionResult AccountOpening(BankAccountModel objmodel)
+        {
+            if (objmodel == null)
+            {
+                return BadRequest("Invalid user data.");
+            }
+            var result = _DashboardRepository.AccountOpening(objmodel);
 
+            if (result != null)
+            {
+                return Ok(new { message = "Customer added successfully." });
+            }
+            else
+            {
+                return BadRequest("Failed to add customer.");
+            }
+        }
 
         //monim code
         [HttpPost]

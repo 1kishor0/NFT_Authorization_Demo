@@ -14,10 +14,11 @@ namespace C1_Blazor_Demo_DotNet8.Repository
     {
  
             private readonly IConfiguration _configuration;
-
-            public DashboardRepository(IConfiguration configuration)
+            private readonly NFT_AuthRepository _authRepository;
+            public DashboardRepository(IConfiguration configuration, NFT_AuthRepository authRepository)
             {
                 _configuration = configuration;
+                _authRepository = authRepository;
             }
 
 
@@ -131,7 +132,6 @@ namespace C1_Blazor_Demo_DotNet8.Repository
 
                     Param.Add("p_user_id", OracleDbType.NVarchar2, ParameterDirection.Input, UserID.ToString());
                     Param.Add("p_branch_id", OracleDbType.NVarchar2, ParameterDirection.Input, BranchID.ToString());
-
                     Param.Add("p_result", OracleDbType.RefCursor, ParameterDirection.Output);
 
                     var conn = this.GetConnection();
@@ -204,6 +204,37 @@ namespace C1_Blazor_Demo_DotNet8.Repository
                 throw new Exception("Error adding customer.", ex);
             }
         }
+        public async Task<object> fetchCustomerData(string log_id)
+        {
+            object result = null;
+            try
+            {
+                var Param = new OracleConfig();
+
+                Param.Add("p_log_ID", OracleDbType.NVarchar2, ParameterDirection.Input, log_id.ToString());
+                Param.Add("p_cursor", OracleDbType.RefCursor, ParameterDirection.Output);
+
+                var conn = this.GetConnection();
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                if (conn.State == ConnectionState.Open)
+                {
+                    var query = "Abs_Auth_Skb.get_log_details";
+
+                    result = SqlMapper.Query(conn, query, param: Param, commandType: CommandType.StoredProcedure);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return result;
+        }
 
         public async Task<string> update_rework_flag(string log_id, string column_name, string rework_flag)
         {
@@ -248,6 +279,92 @@ namespace C1_Blazor_Demo_DotNet8.Repository
 
             return "Okay";
         }
+
+
+        public async Task<BankAccountModel> AccountOpening(BankAccountModel objacc)
+        {
+            string errorCode = string.Empty;
+            string errorMsg = string.Empty;
+            string? Account_ID = null;
+
+            try
+            {
+                var param = new OracleConfig();
+
+                // Add input parameters
+                param.Add("p_FullName", OracleDbType.Varchar2, ParameterDirection.Input, objacc.FullName);
+                param.Add("p_Email", OracleDbType.Varchar2, ParameterDirection.Input, objacc.Email);
+                param.Add("p_PhoneNumber", OracleDbType.Varchar2, ParameterDirection.Input, objacc.PhoneNumber);
+                param.Add("p_DateOfBirth", OracleDbType.Date, ParameterDirection.Input, objacc.DateOfBirth);
+                param.Add("p_Address", OracleDbType.Varchar2, ParameterDirection.Input, objacc.Address);
+                param.Add("p_City", OracleDbType.Varchar2, ParameterDirection.Input, objacc.City);
+                param.Add("p_State", OracleDbType.Varchar2, ParameterDirection.Input, objacc.State);
+                param.Add("p_ZipCode", OracleDbType.Varchar2, ParameterDirection.Input, objacc.ZipCode);
+                param.Add("p_Country", OracleDbType.Varchar2, ParameterDirection.Input, objacc.Country);
+                param.Add("p_AccountType", OracleDbType.Varchar2, ParameterDirection.Input, objacc.AccountType);
+                param.Add("p_InitialDeposit", OracleDbType.Decimal, ParameterDirection.Input, objacc.InitialDeposit);
+                param.Add("p_NomineeFullName", OracleDbType.Varchar2, ParameterDirection.Input, objacc.NomineeFullName ?? (object)DBNull.Value);
+                param.Add("p_NomineeRelationship", OracleDbType.Varchar2, ParameterDirection.Input, objacc.NomineeRelationship ?? (object)DBNull.Value);
+                param.Add("p_IDProofFile", OracleDbType.Blob, ParameterDirection.Input, objacc.IDProofFile ?? (object)DBNull.Value);
+
+                // Add output parameter for AccountNo
+                param.Add("p_AccountNo", OracleDbType.Varchar2, ParameterDirection.Output, size: 3200);
+
+                using (var conn = GetConnection())
+                {
+                    if (conn.State == ConnectionState.Closed)
+                    {
+                        conn.Open();
+                    }
+
+                    using (var transaction = conn.BeginTransaction())
+                    {
+                        try
+                        {
+                            var query = "ABS_auth_skb.InsertBankAccount";  
+
+                            // Execute stored procedure
+                            await conn.ExecuteAsync(query, param: param, commandType: CommandType.StoredProcedure, transaction: transaction);
+
+                            // Commit transaction
+                            transaction.Commit();
+
+                            // Retrieve the output value for AccountNo
+                            var accountNo = param.GetOutputValue("p_AccountNo");
+
+                            // Handle errors if any
+                            if (!string.IsNullOrEmpty(errorCode))
+                            {
+                                throw new ApplicationException($"Error: {errorCode}, Message: {errorMsg}");
+                            }
+
+                            // Log the action in the repository
+                            _authRepository.AddNFT_Log(
+                                "0031", "1056", "ADD", "sakib31", "5",
+                                "BankAccountsSKB", "Account Opening", "ACCOUNTID",
+                                "Account ID", accountNo, "1"
+                            );
+                        }
+                        catch (Exception)
+                        {
+                            // Rollback in case of error
+                            transaction.Rollback();
+                            throw;
+                        }
+                    }
+                }
+
+                return objacc;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error adding customer.", ex);
+            }
+        }
+
+
+
+
 
 
         //Part of Monim
@@ -310,7 +427,7 @@ namespace C1_Blazor_Demo_DotNet8.Repository
                     }
                     else
                     {
-                        AddNFT_Log("0031", "1052", "ADD", objCust.MakeBy, "5", "cor_cus_profile_mnm", "Customer Information", "CUSTOMER_ID", "Customer Id", customer_ID, "1");
+                        _authRepository.AddNFT_Log("0031", "1052", "ADD", objCust.MakeBy, "5", "cor_cus_profile_mnm", "Customer Information", "CUSTOMER_ID", "Customer Id", customer_ID, "1");
                     }
                 }
                 return objCust;
@@ -321,64 +438,7 @@ namespace C1_Blazor_Demo_DotNet8.Repository
                 throw new Exception("Error adding customer.", ex);
             }
         }
-        public async Task<NftAuthLogModel> AddNFT_Log(string BranchId, string FunctionId, string Last_Action, string UserId,
-           string Auth_level, string Table_name, string Table_Display_name, string Pk_column_name, string Pk_column_display,
-           string Pk_column_value, string Parent_table_flag)
-        {
-            NftAuthLogModel objNFTlog = new NftAuthLogModel();
-
-            try
-            {
-                var param = new DynamicParameters();
-
-                param.Add("p_branchid", BranchId, DbType.String, ParameterDirection.Input);
-                param.Add("p_function_id", FunctionId ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_action_status", Last_Action ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_remarks", "", DbType.String, ParameterDirection.Input);
-                param.Add("p_make_by", UserId ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_auth_level", Auth_level ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_auth_status_id", "", DbType.String, ParameterDirection.Input);
-                param.Add("p_auth_by", "", DbType.String, ParameterDirection.Input);
-                param.Add("p_auth_pending_level", "", DbType.String, ParameterDirection.Input);
-                param.Add("p_table_name", Table_name ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_table_display_name", Table_Display_name ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_pk_column_name", Pk_column_name ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_pk_display_name", Pk_column_display ?? "", DbType.String, ParameterDirection.Input);
-                param.Add("p_pk_column_value", Pk_column_value, DbType.String, ParameterDirection.Input);
-                param.Add("p_parent_table_flag", Parent_table_flag ?? "", DbType.String, ParameterDirection.Input);
-
-                using (var conn = GetConnection())
-                {
-                    if (conn.State == ConnectionState.Closed)
-                    {
-                        conn.Open();
-                    }
-
-                    using (var transaction = conn.BeginTransaction())
-                    {
-                        try
-                        {
-                            var query = "ABS_auth_skb.nft_auth_log_i";
-
-                            await conn.ExecuteAsync(query, param: param, commandType: CommandType.StoredProcedure, transaction: transaction);
-
-                            transaction.Commit();
-
-                            return objNFTlog;
-                        }
-                        catch (Exception)
-                        {
-                            transaction.Rollback();
-                            throw;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error adding NFT Log.", ex);
-            }
-        }
+    
 
         //Rumman Code
 
@@ -450,6 +510,7 @@ namespace C1_Blazor_Demo_DotNet8.Repository
 
 
                 }
+
 
             }
             catch (Exception ex)

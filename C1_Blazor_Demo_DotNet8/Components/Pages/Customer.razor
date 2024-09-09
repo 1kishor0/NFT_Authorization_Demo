@@ -12,6 +12,8 @@
 @using Microsoft.AspNetCore.Components.Web 
 @using System.ComponentModel.DataAnnotations
 @using C1_Blazor_Demo_DotNet8.Models.ViewModels
+@using System.Text.Json;
+@using Newtonsoft.Json;
 @inject NavigationManager Navigation
 
 <h3>Customer Form</h3>
@@ -86,10 +88,61 @@
 
 
 @code {
+    [Inject] NavigationManager Navigations { get; set; }
     private CustomerModel customer = new CustomerModel();
     private NftAuthLogModel obj_NftAuthLog = new NftAuthLogModel();
+    //  public List<CustomerDataResponse> FetchCustomerData { get; set; } = new List<CustomerDataResponse>();
+    public string name = string.Empty;
     private string Message;
     private string AlertClass;
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Navigations.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        string logId = query["logId"];
+
+        if(logId!=null)
+        {
+            fetchCustomerData(logId);
+        }
+
+    }
+    private async Task fetchCustomerData(string log_id)
+    {
+        try
+        {
+            // customer.CustomerFirstName = "Hello";
+            var response = await _http.GetAsync($"api/Dashboard/fetchCustomerData?log_id={log_id}");
+
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result= await response.Content.ReadAsStringAsync();
+
+                CustomerDataResponse fetchCustomerData = JsonConvert.DeserializeObject<CustomerDataResponse>(result);
+                name = fetchCustomerData.result[0].NEW_VALUE;
+                customer.CustomerSalutation = fetchCustomerData.result[0].NEW_VALUE;
+                customer.CustomerFirstName = fetchCustomerData.result[1].NEW_VALUE;
+                customer.CustomerLastName = fetchCustomerData.result[2].NEW_VALUE;
+                customer.CustomerShortName = fetchCustomerData.result[3].NEW_VALUE;
+                customer.CustomerMiddleName = fetchCustomerData.result[4].NEW_VALUE;
+                customer.MakeBy = fetchCustomerData.result[5].NEW_VALUE;
+             //   customer.CustomerFirstName = name.ToString();
+
+                StateHasChanged();
+            }
+            else
+            {
+                Message = "Failed to add customer.";
+                AlertClass = "alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error: {ex.Message}";
+            AlertClass = "alert-danger";
+        }
+    }
 
     private async Task HandleValidSubmit()
     {
@@ -125,4 +178,24 @@
         Message = string.Empty; 
         AlertClass = string.Empty; 
     }
+    public class ResultItem
+    {
+        public string COLUMN_NAME { get; set; }
+        public string NEW_VALUE { get; set; }
+    }
+
+    public class CustomerDataResponse
+    {
+        public List<ResultItem> result { get; set; }
+        public int id { get; set; }
+        public object exception { get; set; }
+        public int status { get; set; }
+        public bool isCanceled { get; set; }
+        public bool isCompleted { get; set; }
+        public bool isCompletedSuccessfully { get; set; }
+        public int creationOptions { get; set; }
+        public object asyncState { get; set; }
+        public bool isFaulted { get; set; }
+    }
+
 }
